@@ -1,0 +1,220 @@
+name: Fetch SGB Prices
+
+on:
+  schedule:
+    # Every 10 min Mon-Fri, 3:45–10:30 UTC = 9:15am–4:00pm IST
+    - cron: '*/10 3-10 * * 1-5'
+  workflow_dispatch:
+
+jobs:
+  fetch-prices:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Fetch SGB prices from NSE and write prices.json
+        run: |
+          node << 'SCRIPT'
+          const https = require('https');
+          const zlib  = require('zlib');
+          const fs    = require('fs');
+          const path  = require('path');
+
+          const OUTPUT_FILE = path.join(process.cwd(), 'public', 'prices.json');
+
+          const SGB_SYMBOLS = [
+            'SGBFEB32IV','SGBDE31III','SGBSEP31II','SGBJUN31I',
+            'SGBMAR31IV','SGBDE30III','SGBAUG30',  'SGBJUN30',
+            'SGBMAR30X', 'SGBJAN30IX','SGBD29VIII','SGBNV29VII',
+            'SGBSEP29VI','SGBAUG29V', 'SGBJUL29IV','SGBJU29III',
+            'SGBJUN29II','SGBMAY29I', 'SGBMR29XII','SGBFEB29XI',
+            'SGBJAN29X', 'SGBJAN29IX','SGBN28VIII','SGBOC28VII',
+            'SGBSEP28VI','SGBAUG28V', 'SGBJUL28IV','SGBJUN28',
+            'SGBMAY28',  'SGBAPR28I', 'SGBMAR28X', 'SGBFEB28IX',
+            'SGBJ28VIII','SGBDC27VII','SGBOCT27VI','SGBOCT27',
+            'SGBSEP27',  'SGBAUG27',  'SGBJUL27',  'SGBJUN27',
+            'SGBFEB27',  'SGBJAN27',  'SGBDEC26',  'SGBNOV26',
+            'SGBOCT26',  'SGBMAY26',  'SGBJAN26',  'SGBDEC2513',
+            'SGBDEC2512','SGBDEC25XI','SGBDEC25',  'SGBNOV25IX',
+            'SGBNOV258', 'SGBNOV25',  'SGBNOV25VI','SGBOCT25V',
+            'SGBOCT25IV','SGBOCT25',  'SGBJUL25',  'SGBMAY25',
+          ];
+
+          const sleep = ms => new Promise(r => setTimeout(r, ms));
+          const parseNum = v => { if (!v) return null; const n = parseFloat(String(v).replace(/,/g,'')); return isNaN(n) ? null : n; };
+
+          function httpGet(hostname, urlPath, cookieStr = '', extra = {}) {
+            return new Promise((resolve, reject) => {
+              const req = https.request({
+                hostname, path: urlPath, method: 'GET',
+                headers: {
+                  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                  'Accept': 'application/json, text/html, */*',
+                  'Accept-Language': 'en-IN,en-GB;q=0.9,en-US;q=0.8',
+                  'Accept-Encoding': 'gzip, deflate, br',
+                  'Connection': 'keep-alive',
+                  ...(cookieStr ? { Cookie: cookieStr } : {}),
+                  ...extra,
+                },
+              }, res => {
+                const setCookies = (res.headers['set-cookie'] || []).map(c => c.split(';')[0]);
+                const chunks = [];
+                res.on('data', c => chunks.push(c));
+                res.on('end', () => {
+                  const buf = Buffer.concat(chunks);
+                  const enc = res.headers['content-encoding'] || '';
+                  const decomp = (b, cb) => {
+                    if (enc.includes('br')) zlib.brotliDecompress(b, cb);
+                    else if (enc.includes('gzip')) zlib.gunzip(b, cb);
+                    else if (enc.includes('deflate')) zlib.inflate(b, cb);
+                    else cb(null, b);
+                  };
+                  decomp(buf, (err, dec) => resolve({ body: (dec||buf).toString('utf8'), cookies: setCookies, status: res.statusCode }));
+                });
+              });
+              req.on('error', reject);
+              req.setTimeout(15000, () => { req.destroy(); reject(new Error('timeout: ' + urlPath)); });
+              req.end();
+            });
+          }
+
+          function mergeCookies(jar, arr) {
+            arr.forEach(c => { const i = c.indexOf('='); if (i > 0) jar[c.slice(0,i).trim()] = c.slice(i+1).trim(); });
+          }
+          const jarStr = jar => Object.entries(jar).map(([k,v]) => `${k}=${v}`).join('; ');
+
+          function loadPrev() {
+            try { if (fs.existsSync(OUTPUT_FILE)) return JSON.parse(fs.readFileSync(OUTPUT_FILE,'utf8')).prices || {}; } catch(_) {}
+            return {};
+          }
+
+          async function fetchAll() {
+            const jar = {};
+            const apiH = {
+              'Referer': 'https://www.nseindia.com/market-data/sovereign-gold-bond',
+              'X-Requested-With': 'XMLHttpRequest',
+              'Sec-Fetch-Dest': 'empty', 'Sec-Fetch-Mode': 'cors', 'Sec-Fetch-Site': 'same-origin',
+            };
+
+            console.log('Step 1: Homepage cookies...');
+            mergeCookies(jar, (await httpGet('www.nseindia.com', '/')).cookies);
+            console.log('  cookies:', Object.keys(jar).length);
+            await sleep(1500);
+
+            console.log('Step 2: SGB page cookies...');
+            mergeCookies(jar, (await httpGet('www.nseindia.com', '/market-data/sovereign-gold-bond', jarStr(jar))).cookies);
+            console.log('  cookies:', Object.keys(jar).length);
+            await sleep(1000);
+
+            const prices = {};
+
+            // Attempt 1: bulk bonds-list
+            console.log('Step 3a: Bulk bonds-list API...');
+            try {
+              const r = await httpGet('www.nseindia.com', '/api/bonds-list?category=sgb', jarStr(jar), apiH);
+              mergeCookies(jar, r.cookies);
+              console.log('  status:', r.status, 'len:', r.body.length);
+              if (r.status === 200 && (r.body[0] === '[' || r.body[0] === '{')) {
+                const data = JSON.parse(r.body);
+                const items = Array.isArray(data) ? data : (data.data || data.bonds || []);
+                console.log('  items:', items.length);
+                for (const item of items) {
+                  const sym = (item.symbol || item.nseSymbol || item.SYMBOL || '').toUpperCase().trim();
+                  if (!SGB_SYMBOLS.includes(sym)) continue;
+                  const ltp = parseNum(item.lastPrice || item.ltp || item.LTP || item.lastTradedPrice || item.closingPrice);
+                  if (ltp && ltp > 100) { prices[sym] = { ltp, fetchedAt: new Date().toISOString(), source: 'nse-bulk' }; }
+                }
+                console.log('  parsed:', Object.keys(prices).length);
+              }
+            } catch(e) { console.log('  bulk failed:', e.message); }
+
+            // Attempt 2: equity index for SGB
+            if (Object.keys(prices).length < 5) {
+              console.log('Step 3b: Equity index endpoint...');
+              await sleep(600);
+              try {
+                const r = await httpGet('www.nseindia.com', '/api/equity-stockIndices?index=SOVEREIGN%20GOLD%20BOND', jarStr(jar), apiH);
+                mergeCookies(jar, r.cookies);
+                console.log('  status:', r.status);
+                if (r.status === 200) {
+                  const items = JSON.parse(r.body).data || [];
+                  console.log('  items:', items.length);
+                  for (const item of items) {
+                    const sym = (item.symbol || '').toUpperCase().trim();
+                    if (!SGB_SYMBOLS.includes(sym)) continue;
+                    const ltp = parseNum(item.lastPrice || item.ltp);
+                    if (ltp && ltp > 100) prices[sym] = { ltp, fetchedAt: new Date().toISOString(), source: 'nse-index' };
+                  }
+                  console.log('  total so far:', Object.keys(prices).length);
+                }
+              } catch(e) { console.log('  index failed:', e.message); }
+            }
+
+            // Attempt 3: individual quotes for anything still missing
+            const missing = SGB_SYMBOLS.filter(s => !prices[s]);
+            if (missing.length > 0) {
+              console.log(`Step 3c: Individual quotes for ${missing.length} symbols...`);
+              await sleep(500);
+              for (let i = 0; i < missing.length; i += 8) {
+                const batch = missing.slice(i, i + 8);
+                await Promise.allSettled(batch.map(async sym => {
+                  try {
+                    const r = await httpGet('www.nseindia.com', `/api/quote-bonds?param=${sym}`, jarStr(jar), apiH);
+                    mergeCookies(jar, r.cookies);
+                    if (r.status !== 200) return;
+                    const d = JSON.parse(r.body);
+                    const ltp = parseNum(d?.data?.lastPrice || d?.priceInfo?.lastPrice || d?.lastPrice || d?.ltp);
+                    if (ltp && ltp > 100) { prices[sym] = { ltp, fetchedAt: new Date().toISOString(), source: 'nse-quote' }; console.log(`    ${sym}: ${ltp}`); }
+                  } catch(e) { console.log(`    ${sym}: ${e.message}`); }
+                }));
+                if (i + 8 < missing.length) await sleep(500);
+              }
+            }
+
+            return prices;
+          }
+
+          (async () => {
+            console.log(`\n=== SGB Fetch ${new Date().toISOString()} ===\n`);
+            const prev = loadPrev();
+            console.log('Previous:', Object.keys(prev).length, 'symbols');
+
+            let fresh = {};
+            try { fresh = await fetchAll(); }
+            catch(e) { console.error('Fetch error:', e.message); }
+
+            console.log('\nFresh prices:', Object.keys(fresh).length);
+
+            const merged = { ...prev };
+            for (const [sym, data] of Object.entries(fresh)) merged[sym] = { ...data, stale: false };
+            for (const sym of Object.keys(merged)) { if (!fresh[sym]) merged[sym].stale = true; }
+
+            const out = { fetchedAt: new Date().toISOString(), fetchedCount: Object.keys(fresh).length, totalCount: Object.keys(merged).length, prices: merged };
+            const dir = path.dirname(OUTPUT_FILE);
+            if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+            fs.writeFileSync(OUTPUT_FILE, JSON.stringify(out, null, 2));
+            console.log('\n✓ Written:', OUTPUT_FILE);
+            console.log('  Fresh:', Object.keys(fresh).length, '| Total:', Object.keys(merged).length);
+
+            if (Object.keys(fresh).length === 0) { console.error('\nERROR: 0 prices fetched'); process.exit(1); }
+          })();
+          SCRIPT
+
+      - name: Commit prices.json
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/prices.json
+          git diff --staged --quiet || git commit -m "prices: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          git push
