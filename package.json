@@ -1,0 +1,8 @@
+{
+  "name": "sgbtracker",
+  "version": "1.0.0",
+  "description": "India Sovereign Gold Bond Tracker",
+  "engines": {
+    "node": ">=18.x"
+  }
+}
