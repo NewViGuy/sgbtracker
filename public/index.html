@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SGB Tracker — India Sovereign Gold Bond Analyser</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold:       #B8860B;
+    --gold-dark:  #8B6508;
+    --gold-bg:    #FDF8EE;
+    --gold-border:#E8D5A3;
+    --bg:         #F8F9FA;
+    --surface:    #FFFFFF;
+    --surface2:   #F1F3F5;
+    --border:     #E2E6EA;
+    --border2:    #CDD2D8;
+    --text:       #1A1D23;
+    --text2:      #4A5568;
+    --muted:      #8A95A3;
+    --green:      #1A7F4B;
+    --green-bg:   #EDFAF3;
+    --red:        #C53030;
+    --red-bg:     #FEF2F2;
+    --blue:       #2563EB;
+    --blue-bg:    #EFF6FF;
+    --shadow:     0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md:  0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.05);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 13px;
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 28px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: var(--shadow);
+  }
+  .logo {
+    font-weight: 700;
+    font-size: 18px;
+    letter-spacing: -0.3px;
+    color: var(--text);
+  }
+  .logo span { color: var(--gold); }
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .live-pill {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--green-bg);
+    color: var(--green);
+    border: 1px solid #BBF7D0;
+    padding: 3px 9px;
+    border-radius: 99px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .live-pill.warn { background: #FFFBEB; color: #92400E; border-color: #FDE68A; }
+  .live-pill.err  { background: var(--red-bg); color: var(--red); border-color: #FECACA; }
+  .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: currentColor;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* ── GOLD BAR ── */
+  .gold-bar {
+    background: var(--gold-bg);
+    border-bottom: 1px solid var(--gold-border);
+    padding: 14px 28px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    align-items: center;
+  }
+  .gold-stat {
+    padding: 0 24px 0 0;
+    margin-right: 24px;
+    border-right: 1px solid var(--gold-border);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .gold-stat:last-child { border-right: none; margin-left: auto; padding: 0; }
+  .gold-stat label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--gold-dark);
+  }
+  .gold-val {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--gold);
+    font-family: 'JetBrains Mono', monospace;
+    line-height: 1.2;
+  }
+  .gold-sub {
+    font-size: 11px;
+    color: var(--text2);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ── INPUTS ── */
+  .input-row { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+  .input-row label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: var(--gold-dark); }
+
+  input[type="number"] {
+    height: 32px;
+    padding: 0 10px;
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--text);
+    background: var(--surface);
+    outline: none;
+    width: 100px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  input[type="number"]:focus {
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px rgba(184,134,11,0.12);
+  }
+  .unit { font-size: 12px; color: var(--text2); }
+
+  .btn {
+    height: 32px;
+    padding: 0 14px;
+    background: var(--gold);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
+  .btn:hover { background: var(--gold-dark); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-outline {
+    height: 32px;
+    padding: 0 14px;
+    background: transparent;
+    color: var(--text2);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .btn-outline:hover { border-color: var(--gold); color: var(--gold); background: var(--gold-bg); }
+
+  /* ── CONTROLS ── */
+  .controls {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 28px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+  }
+  .ctrl { display: flex; align-items: center; gap: 7px; }
+  .ctrl label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+  select {
+    height: 32px;
+    padding: 0 8px;
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    color: var(--text);
+    background: var(--surface);
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  select:focus { border-color: var(--gold); }
+
+  /* ── STATUS BAR ── */
+  .status-bar {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    padding: 5px 28px;
+    display: flex;
+    gap: 24px;
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ── TABLE ── */
+  .table-wrap {
+    padding: 16px 28px 48px;
+    overflow-x: auto;
+  }
+  table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: var(--surface);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    font-size: 12px;
+  }
+  thead th {
+    background: var(--surface2);
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    padding: 10px 12px;
+    text-align: right;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+    position: sticky;
+    top: 56px;
+    background-clip: padding-box;
+  }
+  thead th:first-child { text-align: left; border-radius: 10px 0 0 0; }
+  thead th:nth-child(2) { text-align: left; }
+  thead th:last-child { border-radius: 0 10px 0 0; }
+  thead th:hover { color: var(--gold); background: var(--gold-bg); }
+  thead th.asc::after  { content: ' ↑'; color: var(--gold); }
+  thead th.desc::after { content: ' ↓'; color: var(--gold); }
+
+  tbody tr { transition: background 0.1s; }
+  tbody tr:hover { background: #FAFBFC; }
+  tbody tr:last-child td:first-child { border-radius: 0 0 0 10px; }
+  tbody tr:last-child td:last-child  { border-radius: 0 0 10px 0; }
+
+  tbody td {
+    padding: 9px 12px;
+    text-align: right;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text2);
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody td:first-child {
+    text-align: left;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    color: var(--text);
+  }
+  tbody td:nth-child(2) {
+    text-align: left;
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    color: var(--muted);
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 400;
+  }
+
+  /* ── BADGES ── */
+  .tag {
+    display: inline-block;
+    font-size: 9px;
+    font-weight: 600;
+    padding: 1px 5px;
+    border-radius: 4px;
+    margin-left: 5px;
+    vertical-align: middle;
+    font-family: 'Inter', sans-serif;
+    letter-spacing: 0.3px;
+  }
+  .tag-exit  { background: var(--blue-bg);  color: var(--blue);  border: 1px solid #BFDBFE; }
+  .tag-soon  { background: #FFFBEB;         color: #92400E;      border: 1px solid #FDE68A; }
+
+  .sym-link { color: var(--gold); text-decoration: none; font-family: 'JetBrains Mono', monospace; }
+  .sym-link:hover { text-decoration: underline; color: var(--gold-dark); }
+
+  /* ── VALUE COLOURS ── */
+  .pos { color: var(--green) !important; font-weight: 500; }
+  .neg { color: var(--red)   !important; font-weight: 500; }
+  .dim { color: var(--muted) !important; }
+
+  .pos-bg { background: var(--green-bg); }
+  .neg-bg { background: var(--red-bg); }
+
+  /* ── LTP CELL ── */
+  .ltp-wrap { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+  .edit-btn {
+    background: none;
+    border: 1px solid var(--border2);
+    color: var(--muted);
+    padding: 2px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 10px;
+    font-family: 'Inter', sans-serif;
+    transition: all 0.15s;
+  }
+  .edit-btn:hover { border-color: var(--gold); color: var(--gold); }
+  .ltp-inp {
+    width: 90px !important;
+    font-size: 12px !important;
+    text-align: right;
+    padding: 0 8px !important;
+    height: 28px !important;
+  }
+
+  /* ── TOOLTIP ── */
+  .th-inner { position: relative; display: inline-block; }
+  .tip-icon { color: var(--muted); margin-left: 3px; font-size: 10px; cursor: help; }
+  .th-inner .tip {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 8px);
+    right: 0;
+    background: var(--text);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    white-space: normal;
+    width: 220px;
+    z-index: 999;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    line-height: 1.5;
+    text-align: left;
+    box-shadow: var(--shadow-md);
+  }
+  .th-inner .tip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    right: 16px;
+    border: 5px solid transparent;
+    border-top-color: var(--text);
+  }
+  .th-inner:hover .tip { display: block; }
+
+  /* ── EMPTY / LOADING ── */
+  .msg-row td {
+    text-align: center !important;
+    padding: 48px !important;
+    color: var(--muted);
+    font-family: 'Inter', sans-serif;
+  }
+  .spinner {
+    display: inline-block;
+    width: 16px; height: 16px;
+    border: 2px solid var(--border);
+    border-top-color: var(--gold);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── LEGEND ── */
+  .legend {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 12px 28px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    font-size: 11px;
+    color: var(--text2);
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-item strong { color: var(--text); }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed;
+    bottom: 20px; right: 20px;
+    background: var(--text);
+    color: white;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 12px;
+    max-width: 300px;
+    z-index: 9999;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: all 0.2s;
+    box-shadow: var(--shadow-md);
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.err { background: var(--red); }
+
+  /* ── FOOTER ── */
+  footer {
+    padding: 12px 28px;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px;
+    background: var(--surface);
+  }
+
+  @media (max-width: 768px) {
+    header, .gold-bar, .controls, .table-wrap, .legend, footer, .status-bar {
+      padding-left: 16px; padding-right: 16px;
+    }
+    .gold-val { font-size: 20px; }
+  }
+  .hide-md { }
+  @media (max-width: 1100px) { .hide-md { display: none !important; } }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">SGB<span>Tracker</span></div>
+  <div class="header-right">
+    <div class="live-pill" id="livePill">
+      <span class="dot"></span>
+      <span id="liveLabel">Initialising…</span>
+    </div>
+    <span id="lastUpdate">—</span>
+  </div>
+</header>
+
+<!-- GOLD BAR -->
+<div class="gold-bar">
+  <div class="gold-stat">
+    <label>Gold Price · ₹/gram · 995 RTGS</label>
+    <div class="gold-val" id="goldDisplay">—</div>
+    <div class="gold-sub" id="goldSrc">—</div>
+  </div>
+
+  <div class="gold-stat">
+    <label>Discount Rate for NPV</label>
+    <div class="input-row">
+      <input type="number" id="discountRate" value="7" min="0.5" max="30" step="0.5" style="width:65px;">
+      <span class="unit">% p.a.</span>
+      <button class="btn" onclick="recalcAll()">Apply</button>
+    </div>
+  </div>
+
+  <div class="gold-stat">
+    <label>Manual Gold Override (₹/gm)</label>
+    <div class="input-row">
+      <input type="number" id="manualGold" placeholder="e.g. 9350" min="100" style="width:120px;">
+      <button class="btn" onclick="applyManual()">Set</button>
+      <button class="btn-outline" onclick="clearManual()">Auto</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONTROLS -->
+<div class="controls">
+  <div class="ctrl">
+    <label>Maturity Year</label>
+    <select id="filterYear" onchange="renderTable()">
+      <option value="">All Active</option>
+      <option value="2025">2025</option>
+      <option value="2026">2026</option>
+      <option value="2027">2027</option>
+      <option value="2028">2028</option>
+      <option value="2029">2029</option>
+      <option value="2030">2030</option>
+      <option value="2031">2031</option>
+      <option value="2032">2032</option>
+    </select>
+  </div>
+  <div class="ctrl">
+    <label>Trading at</label>
+    <select id="filterMode" onchange="renderTable()">
+      <option value="">All</option>
+      <option value="discount">Discount to Gold</option>
+      <option value="premium">Premium to Gold</option>
+      <option value="adjDiscount">Adj. Discount (incl. interest)</option>
+    </select>
+  </div>
+  <div class="ctrl">
+    <label>Early Exit Eligible</label>
+    <select id="filterExit" onchange="renderTable()">
+      <option value="">All</option>
+      <option value="yes">Eligible only</option>
+      <option value="no">Not yet eligible</option>
+    </select>
+  </div>
+  <div style="margin-left:auto; display:flex; gap:8px;">
+    <button class="btn-outline" id="refreshBtn" onclick="refreshAll()">
+      ↻ Refresh Prices
+    </button>
+  </div>
+</div>
+
+<!-- STATUS BAR -->
+<div class="status-bar">
+  <span id="statFetched">LTPs: —</span>
+  <span id="statGold">Gold: —</span>
+  <span id="statCalc">—</span>
+</div>
+
+<!-- TABLE -->
+<div class="table-wrap">
+  <table id="mainTable">
+    <thead>
+      <tr>
+        <th onclick="sortBy('nseCode')">Symbol</th>
+        <th onclick="sortBy('name')">Series</th>
+        <th onclick="sortBy('issuePrice')">Issue ₹</th>
+        <th onclick="sortBy('maturityDate')">Maturity</th>
+        <th onclick="sortBy('daysLeft')">Days Left</th>
+        <th onclick="sortBy('ltp')">
+          <div class="th-inner">LTP (₹)
+            <span class="tip">Last Traded Price on NSE. Click 'edit' on any row to enter manually.</span>
+          </div>
+        </th>
+        <th onclick="sortBy('accruedInt')">
+          <div class="th-inner">Accrued Int.
+            <span class="tip">Interest accrued since last coupon date. Paid on the original issue price (face value) per RBI rules.</span>
+          </div>
+        </th>
+        <th onclick="sortBy('pvInterest')">
+          <div class="th-inner">PV Interest
+            <span class="tip">Present value of all remaining semi-annual coupons. Paid on ISSUE PRICE (face value) — fixed per RBI, not linked to current gold price.</span>
+          </div>
+        </th>
+        <th onclick="sortBy('discGold')">
+          <div class="th-inner">Disc/Prem %
+            <span class="tip">(LTP − Gold) ÷ Gold × 100. Negative = bond cheaper than gold (discount for buyer). Positive = premium.</span>
+          </div>
+        </th>
+        <th onclick="sortBy('discAdj')">
+          <div class="th-inner">Adj Disc/Prem %
+            <span class="tip">(LTP − (Gold + PV of Interest)) ÷ (Gold + PV of Interest) × 100. True discount after accounting for all future coupons.</span>
+          </div>
+        </th>
+        <th onclick="sortBy('ytm')">
+          <div class="th-inner">YTM %
+            <span class="tip">Yield To Maturity — annualised IRR if you buy at LTP today and hold to maturity. Redemption assumed at current gold price.</span>
+          </div>
+        </th>
+        <th onclick="sortBy('nextCoupon')" class="hide-md">Next Coupon</th>
+        <th onclick="sortBy('couponRate')" class="hide-md">Coupon %</th>
+      </tr>
+    </thead>
+    <tbody id="tbody">
+      <tr class="msg-row">
+        <td colspan="13"><span class="spinner"></span>Loading bond data…</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- LEGEND -->
+<div class="legend">
+  <div class="legend-item"><strong class="pos">Green</strong> = Bond at discount to gold (cheaper)</div>
+  <div class="legend-item"><strong class="neg">Red</strong> = Bond at premium to gold</div>
+  <div class="legend-item"><strong>Adj Disc/Prem</strong> = Accounts for PV of all remaining coupons</div>
+  <div class="legend-item"><strong>YTM</strong> = IRR assuming hold to maturity, redeemed at current gold price</div>
+  <div class="legend-item"><span class="tag tag-exit">Early Exit</span> &nbsp;= RBI premature redemption eligible (&gt;5 years from issue)</div>
+  <div class="legend-item"><span class="tag tag-soon">Matures Soon</span> &nbsp;= Matures within 6 months</div>
+</div>
+
+<footer>
+  <span>SGB Tracker · LTP: NSE via GitHub Actions (every 10 min, market hours) · Gold: allindiabullion.com RTGS 995 · Not financial advice</span>
+  <span id="footerTime"></span>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════
+//  MASTER SGB DATA (from RBI circulars)
+// ═══════════════════════════════════════════
+const BONDS = [
+  {nseCode:'SGBFEB32IV', name:'SGB 2023-24 Series IV',   issueDate:'2024-02-21',maturityDate:'2032-02-21',issuePrice:6263,couponRate:2.5},
+  {nseCode:'SGBDE31III', name:'SGB 2023-24 Series III',  issueDate:'2023-12-28',maturityDate:'2031-12-28',issuePrice:6199,couponRate:2.5},
+  {nseCode:'SGBSEP31II', name:'SGB 2023-24 Series II',   issueDate:'2023-09-20',maturityDate:'2031-09-20',issuePrice:5873,couponRate:2.5},
+  {nseCode:'SGBJUN31I',  name:'SGB 2023-24 Series I',    issueDate:'2023-06-27',maturityDate:'2031-06-27',issuePrice:5876,couponRate:2.5},
+  {nseCode:'SGBMAR31IV', name:'SGB 2022-23 Series IV',   issueDate:'2023-03-14',maturityDate:'2031-03-14',issuePrice:5561,couponRate:2.5},
+  {nseCode:'SGBDE30III', name:'SGB 2022-23 Series III',  issueDate:'2022-12-27',maturityDate:'2030-12-27',issuePrice:5359,couponRate:2.5},
+  {nseCode:'SGBAUG30',   name:'SGB 2022-23 Series II',   issueDate:'2022-08-30',maturityDate:'2030-08-30',issuePrice:5147,couponRate:2.5},
+  {nseCode:'SGBJUN30',   name:'SGB 2022-23 Series I',    issueDate:'2022-06-28',maturityDate:'2030-06-28',issuePrice:5041,couponRate:2.5},
+  {nseCode:'SGBMAR30X',  name:'SGB 2021-22 Series X',    issueDate:'2022-03-08',maturityDate:'2030-03-08',issuePrice:5059,couponRate:2.5},
+  {nseCode:'SGBJAN30IX', name:'SGB 2021-22 Series IX',   issueDate:'2022-01-18',maturityDate:'2030-01-18',issuePrice:4736,couponRate:2.5},
+  {nseCode:'SGBD29VIII', name:'SGB 2021-22 Series VIII', issueDate:'2021-12-07',maturityDate:'2029-12-07',issuePrice:4741,couponRate:2.5},
+  {nseCode:'SGBNV29VII', name:'SGB 2021-22 Series VII',  issueDate:'2021-11-02',maturityDate:'2029-11-02',issuePrice:4711,couponRate:2.5},
+  {nseCode:'SGBSEP29VI', name:'SGB 2021-22 Series VI',   issueDate:'2021-09-07',maturityDate:'2029-09-07',issuePrice:4682,couponRate:2.5},
+  {nseCode:'SGBAUG29V',  name:'SGB 2021-22 Series V',    issueDate:'2021-08-17',maturityDate:'2029-08-17',issuePrice:4740,couponRate:2.5},
+  {nseCode:'SGBJUL29IV', name:'SGB 2021-22 Series IV',   issueDate:'2021-07-20',maturityDate:'2029-07-20',issuePrice:4757,couponRate:2.5},
+  {nseCode:'SGBJU29III', name:'SGB 2021-22 Series III',  issueDate:'2021-06-08',maturityDate:'2029-06-08',issuePrice:4839,couponRate:2.5},
+  {nseCode:'SGBJUN29II', name:'SGB 2021-22 Series II',   issueDate:'2021-06-01',maturityDate:'2029-06-01',issuePrice:4792,couponRate:2.5},
+  {nseCode:'SGBMAY29I',  name:'SGB 2021-22 Series I',    issueDate:'2021-05-25',maturityDate:'2029-05-25',issuePrice:4727,couponRate:2.5},
+  {nseCode:'SGBMR29XII', name:'SGB 2020-21 Series XII',  issueDate:'2021-03-09',maturityDate:'2029-03-09',issuePrice:4612,couponRate:2.5},
+  {nseCode:'SGBFEB29XI', name:'SGB 2020-21 Series XI',   issueDate:'2021-02-09',maturityDate:'2029-02-09',issuePrice:4862,couponRate:2.5},
+  {nseCode:'SGBJAN29X',  name:'SGB 2020-21 Series X',    issueDate:'2021-01-19',maturityDate:'2029-01-19',issuePrice:5054,couponRate:2.5},
+  {nseCode:'SGBJAN29IX', name:'SGB 2020-21 Series IX',   issueDate:'2021-01-05',maturityDate:'2029-01-05',issuePrice:4950,couponRate:2.5},
+  {nseCode:'SGBN28VIII', name:'SGB 2020-21 Series VIII', issueDate:'2020-11-18',maturityDate:'2028-11-18',issuePrice:5127,couponRate:2.5},
+  {nseCode:'SGBOC28VII', name:'SGB 2020-21 Series VII',  issueDate:'2020-10-20',maturityDate:'2028-10-20',issuePrice:5001,couponRate:2.5},
+  {nseCode:'SGBSEP28VI', name:'SGB 2020-21 Series VI',   issueDate:'2020-09-08',maturityDate:'2028-09-08',issuePrice:5067,couponRate:2.5},
+  {nseCode:'SGBAUG28V',  name:'SGB 2020-21 Series V',    issueDate:'2020-08-11',maturityDate:'2028-08-11',issuePrice:5284,couponRate:2.5},
+  {nseCode:'SGBJUL28IV', name:'SGB 2020-21 Series IV',   issueDate:'2020-07-14',maturityDate:'2028-07-14',issuePrice:4802,couponRate:2.5},
+  {nseCode:'SGBJUN28',   name:'SGB 2020-21 Series III',  issueDate:'2020-06-16',maturityDate:'2028-06-16',issuePrice:4627,couponRate:2.5},
+  {nseCode:'SGBMAY28',   name:'SGB 2020-21 Series II',   issueDate:'2020-05-22',maturityDate:'2028-05-22',issuePrice:4540,couponRate:2.5},
+  {nseCode:'SGBAPR28I',  name:'SGB 2020-21 Series I',    issueDate:'2020-04-28',maturityDate:'2028-04-28',issuePrice:4589,couponRate:2.5},
+  {nseCode:'SGBMAR28X',  name:'SGB 2019-20 Series X',    issueDate:'2020-03-11',maturityDate:'2028-03-11',issuePrice:4210,couponRate:2.5},
+  {nseCode:'SGBFEB28IX', name:'SGB 2019-20 Series IX',   issueDate:'2020-02-11',maturityDate:'2028-02-11',issuePrice:4020,couponRate:2.5},
+  {nseCode:'SGBJ28VIII', name:'SGB 2019-20 Series VIII', issueDate:'2020-01-21',maturityDate:'2028-01-21',issuePrice:3966,couponRate:2.5},
+  {nseCode:'SGBDC27VII', name:'SGB 2019-20 Series VII',  issueDate:'2019-12-10',maturityDate:'2027-12-10',issuePrice:3745,couponRate:2.5},
+  {nseCode:'SGBOCT27VI', name:'SGB 2019-20 Series VI',   issueDate:'2019-10-30',maturityDate:'2027-10-30',issuePrice:3785,couponRate:2.5},
+  {nseCode:'SGBOCT27',   name:'SGB 2019-20 Series V',    issueDate:'2019-10-15',maturityDate:'2027-10-15',issuePrice:3738,couponRate:2.5},
+  {nseCode:'SGBSEP27',   name:'SGB 2019-20 Series IV',   issueDate:'2019-09-17',maturityDate:'2027-09-17',issuePrice:3840,couponRate:2.5},
+  {nseCode:'SGBAUG27',   name:'SGB 2019-20 Series III',  issueDate:'2019-08-14',maturityDate:'2027-08-14',issuePrice:3449,couponRate:2.5},
+  {nseCode:'SGBJUL27',   name:'SGB 2019-20 Series II',   issueDate:'2019-07-16',maturityDate:'2027-07-16',issuePrice:3393,couponRate:2.5},
+  {nseCode:'SGBJUN27',   name:'SGB 2019-20 Series I',    issueDate:'2019-06-11',maturityDate:'2027-06-11',issuePrice:3146,couponRate:2.5},
+  {nseCode:'SGBFEB27',   name:'SGB 2018-19 Series VI',   issueDate:'2019-02-12',maturityDate:'2027-02-12',issuePrice:3276,couponRate:2.5},
+  {nseCode:'SGBJAN27',   name:'SGB 2018-19 Series V',    issueDate:'2019-01-22',maturityDate:'2027-01-22',issuePrice:3164,couponRate:2.5},
+  {nseCode:'SGBDEC26',   name:'SGB 2018-19 Series IV',   issueDate:'2019-01-01',maturityDate:'2027-01-01',issuePrice:3069,couponRate:2.5},
+  {nseCode:'SGBNOV26',   name:'SGB 2018-19 Series III',  issueDate:'2018-11-13',maturityDate:'2026-11-13',issuePrice:3133,couponRate:2.5},
+  {nseCode:'SGBOCT26',   name:'SGB 2018-19 Series II',   issueDate:'2018-10-23',maturityDate:'2026-10-23',issuePrice:3096,couponRate:2.5},
+  {nseCode:'SGBMAY26',   name:'SGB 2018-19 Series I',    issueDate:'2018-05-04',maturityDate:'2026-05-04',issuePrice:3064,couponRate:2.5},
+  {nseCode:'SGBJAN26',   name:'SGB 2017-18 Series XIV',  issueDate:'2018-01-01',maturityDate:'2026-01-01',issuePrice:2831,couponRate:2.5},
+  {nseCode:'SGBDEC2513', name:'SGB 2017-18 Series XIII', issueDate:'2017-12-26',maturityDate:'2025-12-26',issuePrice:2816,couponRate:2.5},
+  {nseCode:'SGBDEC2512', name:'SGB 2017-18 Series XII',  issueDate:'2017-12-18',maturityDate:'2025-12-18',issuePrice:2840,couponRate:2.5},
+  {nseCode:'SGBDEC25XI', name:'SGB 2017-18 Series XI',   issueDate:'2017-12-11',maturityDate:'2025-12-11',issuePrice:2902,couponRate:2.5},
+  {nseCode:'SGBDEC25',   name:'SGB 2017-18 Series X',    issueDate:'2017-12-04',maturityDate:'2025-12-04',issuePrice:2911,couponRate:2.5},
+  {nseCode:'SGBNOV25IX', name:'SGB 2017-18 Series IX',   issueDate:'2017-11-27',maturityDate:'2025-11-27',issuePrice:2914,couponRate:2.5},
+  {nseCode:'SGBNOV258',  name:'SGB 2017-18 Series VIII', issueDate:'2017-11-20',maturityDate:'2025-11-20',issuePrice:2911,couponRate:2.5},
+  {nseCode:'SGBNOV25',   name:'SGB 2017-18 Series VII',  issueDate:'2017-11-13',maturityDate:'2025-11-13',issuePrice:2884,couponRate:2.5},
+  {nseCode:'SGBNOV25VI', name:'SGB 2017-18 Series VI',   issueDate:'2017-11-06',maturityDate:'2025-11-06',issuePrice:2895,couponRate:2.5},
+  {nseCode:'SGBOCT25V',  name:'SGB 2017-18 Series V',    issueDate:'2017-10-30',maturityDate:'2025-10-30',issuePrice:2921,couponRate:2.5},
+  {nseCode:'SGBOCT25IV', name:'SGB 2017-18 Series IV',   issueDate:'2017-10-23',maturityDate:'2025-10-23',issuePrice:2937,couponRate:2.5},
+  {nseCode:'SGBOCT25',   name:'SGB 2017-18 Series III',  issueDate:'2017-10-16',maturityDate:'2025-10-16',issuePrice:2906,couponRate:2.5},
+  {nseCode:'SGBJUL25',   name:'SGB 2017-18 Series II',   issueDate:'2017-07-28',maturityDate:'2025-07-28',issuePrice:2780,couponRate:2.5},
+  {nseCode:'SGBMAY25',   name:'SGB 2017-18 Series I',    issueDate:'2017-05-12',maturityDate:'2025-05-12',issuePrice:2901,couponRate:2.5},
+];
+
+// ═══ STATE ═══
+let goldPrice    = null;
+let manualGold   = null;
+let ltpMap       = {};       // nseCode → { ltp, manual, fetchedAt }
+let enrichedRows = [];
+let sortKey      = 'maturityDate';
+let sortDir      = 1;
+
+// ═══ HELPERS ═══
+const fmt    = (n, d=2) => n == null || isNaN(n) ? '—' : n.toLocaleString('en-IN', {minimumFractionDigits:d, maximumFractionDigits:d});
+const fmtPct = n => n == null || isNaN(n) ? '—' : (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
+const fmtDt  = d => new Date(d).toLocaleDateString('en-IN', {month:'short', year:'numeric'});
+
+function toast(msg, isErr=false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (isErr ? ' err' : '');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.className = 'toast', 3500);
+}
+
+function setLive(state) {
+  const p = document.getElementById('livePill');
+  p.className = 'live-pill' + (state === 'warn' ? ' warn' : state === 'err' ? ' err' : '');
+}
+
+// ═══ CALCULATIONS (all use issuePrice as face value) ═══
+function nextCouponDate(issueDate) {
+  const d   = new Date(issueDate);
+  const now = new Date();
+  const m1  = d.getMonth();
+  const m2  = (m1 + 6) % 12;
+  const day = d.getDate();
+  const candidates = [];
+  for (let y = now.getFullYear() - 1; y <= now.getFullYear() + 1; y++) {
+    candidates.push(new Date(y, m1, day));
+    candidates.push(new Date(y, m2, day));
+  }
+  candidates.sort((a, b) => a - b);
+  return candidates.find(c => c > now) || candidates[candidates.length - 1];
+}
+
+function lastCouponDate(issueDate) {
+  const nx = nextCouponDate(issueDate);
+  const lc = new Date(nx);
+  lc.setMonth(lc.getMonth() - 6);
+  return lc;
+}
+
+function futureCoupons(bond) {
+  const now      = new Date();
+  const maturity = new Date(bond.maturityDate);
+  const coupons  = [];
+  let d = new Date(bond.issueDate);
+  while (d <= maturity) {
+    if (d > now) coupons.push(new Date(d));
+    d = new Date(d);
+    d.setMonth(d.getMonth() + 6);
+  }
+  return coupons;
+}
+
+// Accrued interest: on ISSUE PRICE (face value), not gold price
+function calcAccrued(bond) {
+  const now  = new Date();
+  const lc   = lastCouponDate(bond.issueDate);
+  const days = Math.max(0, (now - lc) / 864e5);
+  return bond.issuePrice * (bond.couponRate / 100) * (days / 365);
+}
+
+// PV of remaining coupons: each coupon = issuePrice × couponRate / 2
+function calcPV(bond, dr) {
+  const now       = new Date();
+  const halfCpn   = bond.issuePrice * (bond.couponRate / 100) / 2;
+  const r         = dr / 100;
+  return futureCoupons(bond).reduce((sum, c) => {
+    const yrs = (c - now) / (365.25 * 864e5);
+    return sum + halfCpn / Math.pow(1 + r, yrs);
+  }, 0);
+}
+
+function calcYTM(bond, ltp, goldNow) {
+  if (!ltp || !goldNow) return null;
+  const now      = new Date();
+  const maturity = new Date(bond.maturityDate);
+  if (maturity <= now) return null;
+  const halfCpn    = bond.issuePrice * (bond.couponRate / 100) / 2;
+  const coupons    = futureCoupons(bond);
+  const yrsToMat   = (maturity - now) / (365.25 * 864e5);
+
+  const npv = r => {
+    let pv = coupons.reduce((s, c) => {
+      const yrs = (c - now) / (365.25 * 864e5);
+      return s + halfCpn / Math.pow(1 + r, yrs);
+    }, 0);
+    pv += goldNow / Math.pow(1 + r, yrsToMat);
+    return pv - ltp;
+  };
+
+  let lo = -0.9, hi = 10;
+  for (let i = 0; i < 200; i++) {
+    const mid = (lo + hi) / 2;
+    if (Math.abs(hi - lo) < 1e-8) break;
+    npv(mid) > 0 ? (lo = mid) : (hi = mid);
+  }
+  return ((lo + hi) / 2) * 100;
+}
+
+function enrich(bond, goldNow, dr) {
+  const now      = new Date();
+  const maturity = new Date(bond.maturityDate);
+  const issue    = new Date(bond.issueDate);
+  const daysLeft = Math.round((maturity - now) / 864e5);
+  const ageYrs   = (now - issue) / (365.25 * 864e5);
+
+  const entry      = ltpMap[bond.nseCode];
+  const ltp        = entry?.ltp    || null;
+  const ltpManual  = !!entry?.manual;
+
+  const accruedInt = calcAccrued(bond);
+  const pvInterest = calcPV(bond, dr);          // always computed — uses issuePrice only
+  const nextCoupon = nextCouponDate(bond.issueDate);
+
+  let discGold = null, discAdj = null, ytm = null;
+  if (ltp && goldNow) {
+    discGold = ((ltp - goldNow) / goldNow) * 100;
+    discAdj  = ((ltp - (goldNow + pvInterest)) / (goldNow + pvInterest)) * 100;
+    ytm      = calcYTM(bond, ltp, goldNow);
+  }
+
+  return {
+    ...bond, daysLeft, ageYrs, ltp, ltpManual,
+    accruedInt, pvInterest, nextCoupon,
+    discGold, discAdj, ytm,
+    isEarlyExit: ageYrs >= 5,
+    maturesSoon: daysLeft > 0 && daysLeft < 180,
+    isMatured:   daysLeft <= 0,
+  };
+}
+
+// ═══ GOLD FETCH ═══
+async function fetchGold() {
+  try {
+    const r = await fetch('/api/gold');
+    const d = await r.json();
+    if (d.success && d.pricePerGram) {
+      goldPrice = d.pricePerGram;
+      document.getElementById('goldDisplay').textContent = '₹' + fmt(goldPrice);
+      document.getElementById('goldSrc').textContent     = d.source;
+      document.getElementById('statGold').textContent    = `Gold: ₹${fmt(goldPrice)}/gm · ${d.source}`;
+      document.getElementById('lastUpdate').textContent  = new Date().toLocaleTimeString('en-IN');
+      setLive('live');
+      document.getElementById('liveLabel').textContent   = 'Live';
+    } else throw new Error(d.error || 'no price');
+  } catch (e) {
+    document.getElementById('goldSrc').textContent  = 'Fetch failed — enter manually';
+    document.getElementById('statGold').textContent = 'Gold: unavailable';
+    setLive('err');
+    document.getElementById('liveLabel').textContent = 'Gold fetch failed';
+    toast('Could not fetch gold price. Enter it manually above.', true);
+  }
+}
+
+// ═══ LTP FETCH ═══
+async function fetchLTPs() {
+  const btn = document.getElementById('refreshBtn');
+  btn.disabled = true;
+  btn.textContent = '↻ Fetching…';
+
+  try {
+    // Reads from public/prices.json — written by GitHub Actions every 10 min
+    // Cache-bust with timestamp so browser doesn't serve stale file
+    const r = await fetch('/prices.json?t=' + Date.now());
+    const d = await r.json();
+
+    if (d.prices && Object.keys(d.prices).length > 0) {
+      let fresh = 0, stale = 0;
+      for (const [sym, info] of Object.entries(d.prices)) {
+        if (!ltpMap[sym]?.manual) {
+          ltpMap[sym] = { ltp: info.ltp, fetchedAt: info.fetchedAt, stale: info.stale };
+          info.stale ? stale++ : fresh++;
+        }
+      }
+
+      const fetchedAgo = d.fetchedAt
+        ? Math.round((Date.now() - new Date(d.fetchedAt)) / 60000) + ' min ago'
+        : '—';
+
+      const staleNote = stale > 0 ? ` · ${stale} stale` : '';
+      document.getElementById('statFetched').textContent =
+        `LTPs: ${fresh} fresh${staleNote} · updated ${fetchedAgo}`;
+
+      // Warn if data is older than 20 minutes (GitHub Actions may have missed a run)
+      const ageMin = d.fetchedAt ? (Date.now() - new Date(d.fetchedAt)) / 60000 : 999;
+      if (ageMin > 20) {
+        setLive('warn');
+        document.getElementById('liveLabel').textContent = `Prices ${Math.round(ageMin)}m old`;
+        toast(`Prices are ${Math.round(ageMin)} min old. GitHub Actions may not have run yet.`, true);
+      } else {
+        setLive('live');
+        document.getElementById('liveLabel').textContent = 'Live';
+        toast(`${fresh} LTPs loaded · updated ${fetchedAgo}`);
+      }
+    } else {
+      throw new Error('prices.json is empty — GitHub Actions has not run yet');
+    }
+  } catch (e) {
+    document.getElementById('statFetched').textContent = `LTPs: not yet fetched — enter manually or wait for GitHub Actions`;
+    toast('No price data yet. GitHub Actions runs every 10 min during market hours (9:15am–4pm IST).', true);
+    setLive('warn');
+    document.getElementById('liveLabel').textContent = 'Awaiting first fetch';
+  }
+
+  btn.disabled = false;
+  btn.textContent = '↻ Refresh Prices';
+  recalcAll();
+}
+
+// ═══ MANUAL GOLD ═══
+function applyManual() {
+  const v = parseFloat(document.getElementById('manualGold').value);
+  if (!v || v < 100) { toast('Enter a valid price > ₹100', true); return; }
+  manualGold = v;
+  goldPrice  = v;
+  document.getElementById('goldDisplay').textContent = '₹' + fmt(v);
+  document.getElementById('goldSrc').textContent     = 'Manual override';
+  toast('Gold price set to ₹' + fmt(v) + '/gm');
+  recalcAll();
+}
+function clearManual() {
+  manualGold = null;
+  document.getElementById('manualGold').value = '';
+  toast('Reverted to auto price');
+  fetchGold().then(recalcAll);
+}
+
+// ═══ MANUAL LTP EDIT ═══
+function startEdit(code) {
+  const row  = enrichedRows.find(r => r.nseCode === code);
+  const cell = document.getElementById('ltp-' + code);
+  const cur  = row?.ltp || '';
+  cell.innerHTML = `<div class="ltp-wrap">
+    <input type="number" class="ltp-inp" id="li-${code}" value="${cur}" placeholder="₹/gm" min="100">
+    <button class="btn" style="height:28px;padding:0 10px;font-size:11px;" onclick="saveLTP('${code}')">✓</button>
+    <button class="btn-outline" style="height:28px;padding:0 8px;font-size:11px;" onclick="recalcAll()">✕</button>
+  </div>`;
+  document.getElementById('li-' + code)?.focus();
+}
+function saveLTP(code) {
+  const v = parseFloat(document.getElementById('li-' + code)?.value);
+  if (!v || v < 100) { toast('Enter a valid LTP', true); return; }
+  ltpMap[code] = { ltp: v, manual: true, fetchedAt: new Date().toISOString() };
+  toast(`LTP for ${code} set to ₹${fmt(v)}`);
+  recalcAll();
+}
+
+// ═══ RECALC ═══
+function recalcAll() {
+  const gp = manualGold || goldPrice;
+  const dr = parseFloat(document.getElementById('discountRate').value) || 7;
+  enrichedRows = BONDS.map(b => enrich(b, gp, dr));
+  document.getElementById('statCalc').textContent  = 'Calculated: ' + new Date().toLocaleTimeString('en-IN');
+  document.getElementById('footerTime').textContent = new Date().toLocaleString('en-IN');
+  renderTable();
+}
+
+// ═══ RENDER ═══
+function renderTable() {
+  const filterYear = document.getElementById('filterYear').value;
+  const filterMode = document.getElementById('filterMode').value;
+  const filterExit = document.getElementById('filterExit').value;
+
+  let rows = enrichedRows.filter(r => {
+    if (r.isMatured) return false;
+    if (filterYear && !r.maturityDate.startsWith(filterYear)) return false;
+    if (filterMode === 'discount'    && !(r.discGold < 0))  return false;
+    if (filterMode === 'premium'     && !(r.discGold > 0))  return false;
+    if (filterMode === 'adjDiscount' && !(r.discAdj  < 0))  return false;
+    if (filterExit === 'yes' && !r.isEarlyExit) return false;
+    if (filterExit === 'no'  &&  r.isEarlyExit) return false;
+    return true;
+  });
+
+  // Sort
+  rows.sort((a, b) => {
+    let av = a[sortKey], bv = b[sortKey];
+    if (av instanceof Date) av = av.getTime();
+    if (bv instanceof Date) bv = bv.getTime();
+    if (av == null) return 1;
+    if (bv == null) return -1;
+    return (av > bv ? 1 : av < bv ? -1 : 0) * sortDir;
+  });
+
+  if (!rows.length) {
+    document.getElementById('tbody').innerHTML =
+      '<tr class="msg-row"><td colspan="13">No bonds match the current filter.</td></tr>';
+    return;
+  }
+
+  const pctTd = (v, extraClass='') => {
+    if (v == null || isNaN(v)) return `<td class="dim">—</td>`;
+    const cls = v < 0 ? 'pos' : v > 0 ? 'neg' : 'dim';
+    return `<td class="${cls} ${extraClass}">${fmtPct(v)}</td>`;
+  };
+
+  document.getElementById('tbody').innerHTML = rows.map(r => {
+    const ltpHtml = r.ltp
+      ? `<div class="ltp-wrap">
+           <span>₹${fmt(r.ltp)}${r.ltpManual ? ' <span style="color:var(--muted);font-size:10px;">✎</span>' : ''}</span>
+           <button class="edit-btn" onclick="startEdit('${r.nseCode}')">edit</button>
+         </div>`
+      : `<div class="ltp-wrap">
+           <button class="edit-btn" style="color:var(--gold);border-color:var(--gold-border);" onclick="startEdit('${r.nseCode}')">+ enter</button>
+         </div>`;
+
+    const tags =
+      (r.isEarlyExit ? '<span class="tag tag-exit">Early Exit</span>' : '') +
+      (r.maturesSoon ? '<span class="tag tag-soon">Matures Soon</span>' : '');
+
+    const nc = r.nextCoupon?.toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) || '—';
+
+    const ytmCls = r.ytm != null ? (r.ytm > 0 ? 'pos' : 'neg') : 'dim';
+
+    return `<tr>
+      <td>
+        <a class="sym-link" href="https://www.nseindia.com/get-quotes/bonds?symbol=${r.nseCode}" target="_blank">${r.nseCode}</a>${tags}
+      </td>
+      <td title="${r.name}">${r.name}</td>
+      <td>₹${fmt(r.issuePrice, 0)}</td>
+      <td>${fmtDt(r.maturityDate)}</td>
+      <td>${r.daysLeft > 0 ? r.daysLeft.toLocaleString('en-IN') : '<span class="dim">—</span>'}</td>
+      <td id="ltp-${r.nseCode}">${ltpHtml}</td>
+      <td>₹${fmt(r.accruedInt)}</td>
+      <td>₹${fmt(r.pvInterest)}</td>
+      ${pctTd(r.discGold)}
+      ${pctTd(r.discAdj)}
+      <td class="${ytmCls}">${r.ytm != null ? fmt(r.ytm, 2) + '%' : '—'}</td>
+      <td class="hide-md">${nc}</td>
+      <td class="hide-md">${r.couponRate}%</td>
+    </tr>`;
+  }).join('');
+}
+
+function sortBy(key) {
+  sortDir = sortKey === key ? sortDir * -1 : 1;
+  sortKey = key;
+  document.querySelectorAll('thead th').forEach(th => th.classList.remove('asc','desc'));
+  renderTable();
+}
+
+async function refreshAll() {
+  await fetchGold();
+  await fetchLTPs();
+}
+
+// ═══ INIT ═══
+(async () => {
+  enrichedRows = BONDS.map(b => enrich(b, null, 7));
+  renderTable();
+  await fetchGold();
+  recalcAll();
+  await fetchLTPs();
+  setInterval(refreshAll, 10 * 60 * 1000);
+})();
+</script>
+</body>
+</html>
